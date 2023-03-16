@@ -1,0 +1,18 @@
+trigger:
+- master
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  tag: '1.$(Build.BuildId)'
+
+steps:
+- task: Docker@2
+  inputs:
+    containerRegistry: 'fallenwood-docker'
+    repository: 'fallenwood-echo'
+    command: 'buildAndPush'
+    Dockerfile: '**/Dockerfile'
+    tags: |
+      $(tag)
