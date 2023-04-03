@@ -3,13 +3,13 @@ mod middleware;
 
 use axum::{
   routing::{get},
-  http::{StatusCode},
-  Router, extract::{Query}
+  http::{StatusCode, Request, HeaderValue, Response, HeaderMap},
+  Router, extract::{Query, ConnectInfo}, response::IntoResponse
 };
 use echo_request::EchoRequest;
 use tower::{limit::{RateLimitLayer, ConcurrencyLimitLayer}, ServiceBuilder, buffer::BufferLayer};
 use std::{net::SocketAddr, cmp::min};
-use tokio::time::{sleep, Duration};
+use tokio::{time::{sleep, Duration} };
 use middleware::{populate_request_id, populate_response_time};
 
 const HELP: &'static str = r#"{
@@ -25,10 +25,15 @@ const HELP: &'static str = r#"{
     "Status": "Status",
     "Headers": {
       "X-Request-Id": "Request Id",
+      "X-Client-IP: "Client IP Addrss",
       "X-Response-Time": "Response time, in milliseconds"
     }
   }
 }"#;
+
+const X_CLIENT_IP : &'static str = "X-Client-iP";
+const X_FORWARD_IP: &'static str = "x-forwarded-for";
+const X_REAL_IP: &'static str = "x-real-ip";
 
 #[tokio::main]
 async fn main() {
@@ -55,7 +60,7 @@ async fn main() {
   let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
   tracing::debug!("listening on {}", addr);
   axum::Server::bind(&addr)
-      .serve(app.into_make_service())
+      .serve(app.into_make_service_with_connect_info::<SocketAddr>())
       .await
       .unwrap();
 }
@@ -66,8 +71,10 @@ async fn root() -> &'static str {
 }
 
 async fn get_echo(
-  Query(query): Query<EchoRequest>
-) -> (StatusCode, &'static str) {
+  headers: HeaderMap,
+  Query(query): Query<EchoRequest>,
+  ConnectInfo(addr): ConnectInfo<SocketAddr>
+) -> Response<&'static str> {
   let status = query.status.unwrap_or(200) as u16;
   let timeout = query.timeout.or(query.delay).unwrap_or_default();
   let real_timeout = if timeout < 0 {
@@ -76,7 +83,23 @@ async fn get_echo(
     min(timeout, 120_000) as u64
   };
 
+  let real_ip = match headers.get(X_REAL_IP) {
+    Some(ip) => ip.to_owned(),
+    None => match headers.get(X_FORWARD_IP) {
+      Some(ip) => ip.to_owned(),
+      None => HeaderValue::from_str(addr.ip().to_string().as_str()).unwrap(),
+    }
+  };
+
+  let forward_ip = addr.ip();
+
   sleep(Duration::from_millis(real_timeout)).await;
 
-  (StatusCode::from_u16(status).unwrap(), "")
+  // (StatusCode::from_u16(status).unwrap(), [(X_REAL_IP, real_ip)], "")
+
+  Response::builder()
+  .status(status)
+  .header(X_REAL_IP, real_ip)
+  .body("")
+  .unwrap()
 }
