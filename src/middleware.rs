@@ -1,16 +1,13 @@
 use axum::{
-  extract::Query,
-  http::{HeaderValue, Request, StatusCode},
-  middleware::{self, Next},
+  http::{HeaderValue, Request},
+  middleware::{Next},
   response::Response,
-  routing::get,
-  Router,
 };
 use chrono::Utc;
 use uuid::Uuid;
 
-const X_RESPONSE_TIME : &'static str = "x-response-time";
-const X_REQUEST_ID : &'static str = "x-request-id";
+const X_RESPONSE_TIME: &'static str = "x-response-time";
+const X_REQUEST_ID: &'static str = "x-request-id";
 
 pub async fn populate_request_id<T>(req: Request<T>, next: Next<T>) -> Response {
   let request_id = match req.headers().get(X_REQUEST_ID) {

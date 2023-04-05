@@ -7,6 +7,7 @@ RUN cargo build --release
 FROM debian:buster-slim as base
 WORKDIR /app
 EXPOSE 3000
+ENV RUST_LOG=info
 COPY --from=build /usr/src/myapp/target/release/echo /app
 
 CMD ["./echo"]
