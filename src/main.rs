@@ -14,14 +14,14 @@ use std::{cmp::min, net::SocketAddr};
 use tokio::time::{sleep, Duration};
 use tower::{
   buffer::BufferLayer,
-  limit::{ConcurrencyLimitLayer, RateLimitLayer},
+  limit::{ConcurrencyLimitLayer},
   ServiceBuilder,
 };
 use tower_http::{
   trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
   LatencyUnit,
 };
-use tracing::{Level};
+use tracing::Level;
 
 const HELP: &'static str = r#"{
   "Query": {
@@ -46,13 +46,10 @@ const X_CLIENT_IP: &'static str = "X-Client-iP";
 const X_FORWARD_IP: &'static str = "x-forwarded-for";
 const X_REAL_IP: &'static str = "x-real-ip";
 
-#[tokio::main]
-async fn main() {
-  env_logger::init();
-
+fn create_app() -> Router {
   let app = Router::new()
     .route("/", get(get_echo))
-    .route("/help", get(root))
+    .route("/help", get(help))
     .layer(axum::middleware::from_fn(populate_request_id))
     .layer(
       ServiceBuilder::new()
@@ -80,7 +77,15 @@ async fn main() {
     .layer(axum::middleware::from_fn(populate_response_time))
     .route("/healthz", get(health));
 
+  app
+}
+
+#[tokio::main]
+async fn main() {
+  env_logger::init();
+
   let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+  let app = create_app();
 
   tracing::info!("listening on {}", addr);
 
@@ -91,7 +96,7 @@ async fn main() {
 }
 
 // basic handler that responds with a static string
-async fn root() -> &'static str {
+async fn help() -> &'static str {
   HELP
 }
 
@@ -127,4 +132,26 @@ async fn get_echo(
     [(X_CLIENT_IP, real_ip)],
     "",
   )
+}
+
+#[cfg(test)]
+mod tests {
+  use axum::{
+    http::{StatusCode},
+    response::IntoResponse,
+  };
+
+  #[tokio::test]
+  async fn test_health() {
+    let response = crate::health().await.into_response();
+
+    assert!(response.status() == StatusCode::OK);
+  }
+
+  #[tokio::test]
+  async fn test_help() {
+    let response = crate::help().await.into_response();
+
+    assert!(response.status() == StatusCode::OK);
+  }
 }
