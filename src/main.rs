@@ -12,11 +12,7 @@ use echo_request::EchoRequest;
 use middleware::{populate_request_id, populate_response_time};
 use std::{cmp::min, net::SocketAddr};
 use tokio::time::{sleep, Duration};
-use tower::{
-  buffer::BufferLayer,
-  limit::{ConcurrencyLimitLayer},
-  ServiceBuilder,
-};
+use tower::{buffer::BufferLayer, limit::ConcurrencyLimitLayer, ServiceBuilder};
 use tower_http::{
   trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
   LatencyUnit,
@@ -136,10 +132,16 @@ async fn get_echo(
 
 #[cfg(test)]
 mod tests {
-  use axum::{
-    http::{StatusCode},
-    response::IntoResponse,
+  use std::net::SocketAddr;
+
+use axum::{
+    body::{Body},
+    http::{Request, StatusCode},
+    response::IntoResponse, extract::connect_info::MockConnectInfo,
   };
+  use tower::ServiceExt;
+
+  use crate::{create_app, middleware::X_RESPONSE_TIME};
 
   #[tokio::test]
   async fn test_health() {
@@ -153,5 +155,101 @@ mod tests {
     let response = crate::help().await.into_response();
 
     assert!(response.status() == StatusCode::OK);
+  }
+
+  #[tokio::test]
+  async fn test_app_healthz() {
+    let app = create_app();
+
+    let response = app
+      .oneshot(
+        Request::builder()
+          .uri("/healthz")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let header = response.headers();
+    assert!(header.get(X_RESPONSE_TIME).is_none());
+  }
+
+  #[tokio::test]
+  async fn test_app_help() {
+    let app = create_app();
+
+    let response = app
+      .oneshot(
+        Request::builder()
+          .uri("/help")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let header = response.headers();
+    assert!(header.get(X_RESPONSE_TIME).is_some());
+  }
+
+  #[tokio::test]
+  async fn test_app_200() {
+    let app = create_app()
+      .layer(MockConnectInfo(SocketAddr::from(([192, 1, 1, 1], 12345))));
+
+    let response = app
+      .oneshot(
+        Request::builder()
+          .uri("/")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+  }
+
+  #[tokio::test]
+  async fn test_app_404() {
+    let app = create_app()
+      .layer(MockConnectInfo(SocketAddr::from(([192, 1, 1, 1], 12345))));
+
+    let response = app
+      .oneshot(
+        Request::builder()
+          .uri("/?status=404")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+  }
+
+  #[tokio::test]
+  async fn test_app_delay() {
+    let app = create_app()
+      .layer(MockConnectInfo(SocketAddr::from(([192, 1, 1, 1], 12345))));
+
+    let response = app
+      .oneshot(
+        Request::builder()
+          .uri("/?delay=100")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let header = response.headers();
+    let latency = header.get(X_RESPONSE_TIME).unwrap().to_str().unwrap().parse::<i32>().unwrap();
+
+    assert!(latency >= 100);
   }
 }
