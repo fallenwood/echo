@@ -18,6 +18,10 @@ use tower_http::{
   LatencyUnit,
 };
 use tracing::Level;
+use mimalloc::MiMalloc;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 const HELP: &'static str = r#"{
   "Query": {
