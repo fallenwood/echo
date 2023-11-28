@@ -39,7 +39,8 @@ const X_FORWARD_IP: &'static str = "x-forwarded-for";
 const X_REAL_IP: &'static str = "x-real-ip";
 
 fn create_app() -> Router {
-  let swagger = SwaggerUi::new("/swagger").url("/api-doc/openapi.json", EchoOpenApi::openapi());
+  let swagger = SwaggerUi::new("/swagger")
+    .url("/api-doc/openapi.json", EchoOpenApi::openapi());
 
   let app = Router::new()
     .route("/", get(get_echo))
@@ -83,10 +84,11 @@ async fn main() {
 
   tracing::info!("listening on {}", addr);
 
-  axum::Server::bind(&addr)
-    .serve(app.into_make_service_with_connect_info::<SocketAddr>())
-    .await
-    .unwrap();
+  let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+
+  axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
+  .await
+  .unwrap();
 }
 
 pub async fn health() -> StatusCode {
