@@ -1,7 +1,7 @@
 use axum::{
   http::{HeaderValue, Request},
-  middleware::{Next},
-  response::Response,
+  middleware::Next,
+  response::Response, body::Body,
 };
 use chrono::Utc;
 use uuid::Uuid;
@@ -9,7 +9,7 @@ use uuid::Uuid;
 pub const X_RESPONSE_TIME: &'static str = "x-response-time";
 pub const X_REQUEST_ID: &'static str = "x-request-id";
 
-pub async fn populate_request_id<T>(req: Request<T>, next: Next<T>) -> Response {
+pub async fn populate_request_id(req: Request<Body>, next: Next) -> Response {
   let request_id = match req.headers().get(X_REQUEST_ID) {
     Some(v) => v.to_owned(),
     None => HeaderValue::from_str(Uuid::new_v4().to_string().as_str()).unwrap(),
@@ -22,7 +22,7 @@ pub async fn populate_request_id<T>(req: Request<T>, next: Next<T>) -> Response 
   response
 }
 
-pub async fn populate_response_time<T>(req: Request<T>, next: Next<T>) -> Response {
+pub async fn populate_response_time(req: Request<Body>, next: Next) -> Response {
   let start_time = Utc::now();
 
   let mut response = next.run(req).await;
