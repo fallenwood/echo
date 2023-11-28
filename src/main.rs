@@ -17,39 +17,32 @@ use tower_http::{
   trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
   LatencyUnit,
 };
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 use tracing::Level;
 use mimalloc::MiMalloc;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-const HELP: &'static str = r#"{
-  "Query": {
-    "Status": "Optional Int, return 500 if status is less than 100 or greater than 600",
-    "Timeout": "Optional Uint, in milliseconds, max value is 120s",
-    "Delay": "Optional Uint, in milliseconds, has lower priority than Timeout",
-    "Headers": {
-      "X-Request-Id": "Request Id",
-    }
-  },
-  "Response": {
-    "Status": "Status",
-    "Headers": {
-      "X-Request-Id": "Request Id",
-      "X-Client-IP: "Client IP Addrss",
-      "X-Response-Time": "Response time, in milliseconds"
-    }
-  }
-}"#;
+#[derive(OpenApi)]
+#[openapi(
+  paths(get_echo),
+  components(
+    schemas(EchoRequest),
+  ),
+)]
+struct EchoOpenApi;
 
 const X_CLIENT_IP: &'static str = "X-Client-iP";
 const X_FORWARD_IP: &'static str = "x-forwarded-for";
 const X_REAL_IP: &'static str = "x-real-ip";
 
 fn create_app() -> Router {
+  let swagger = SwaggerUi::new("/swagger").url("/api-doc/openapi.json", EchoOpenApi::openapi());
+
   let app = Router::new()
     .route("/", get(get_echo))
-    .route("/help", get(help))
     .layer(axum::middleware::from_fn(populate_request_id))
     .layer(
       ServiceBuilder::new()
@@ -75,7 +68,8 @@ fn create_app() -> Router {
         ),
     )
     .layer(axum::middleware::from_fn(populate_response_time))
-    .route("/healthz", get(health));
+    .route("/healthz", get(health))
+    .merge(swagger);
 
   app
 }
@@ -95,15 +89,19 @@ async fn main() {
     .unwrap();
 }
 
-// basic handler that responds with a static string
-async fn help() -> &'static str {
-  HELP
-}
-
 pub async fn health() -> StatusCode {
   StatusCode::OK
 }
 
+#[utoipa::path(
+  get,
+  path = "/",
+  params(
+    ("status" = Option<i32>, Query, description = "Http Status Code"),
+    ("delay" = Option<i64>, Query, description = "The delay time in milliseconds"),
+    ("timeout" = Option<i64>, Query, description = "The delay time in milliseconds, higher priority than delay"),
+  ),
+)]
 async fn get_echo(
   headers: HeaderMap,
   Query(query): Query<EchoRequest>,
@@ -139,7 +137,7 @@ mod tests {
   use std::net::SocketAddr;
 
 use axum::{
-    body::{Body},
+    body::Body,
     http::{Request, StatusCode},
     response::IntoResponse, extract::connect_info::MockConnectInfo,
   };
@@ -150,13 +148,6 @@ use axum::{
   #[tokio::test]
   async fn test_health() {
     let response = crate::health().await.into_response();
-
-    assert!(response.status() == StatusCode::OK);
-  }
-
-  #[tokio::test]
-  async fn test_help() {
-    let response = crate::help().await.into_response();
 
     assert!(response.status() == StatusCode::OK);
   }
