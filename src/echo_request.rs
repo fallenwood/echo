@@ -1,6 +1,7 @@
 use serde::Deserialize;
+use utoipa::ToSchema;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct EchoRequest {
   pub status: Option<i32>,
   pub timeout: Option<i64>,
