@@ -1,9 +1,10 @@
-FROM rust:1.73.0-buster as build
+FROM rust:1.75.0-bookworm as build
 
 WORKDIR /usr/src/myapp
 COPY . .
-RUN apt update -y && apt install mold -y
+RUN apt update -y && apt install mold upx -y
 RUN cargo build --release
+RUN upx /usr/src/myapp/target/release/echo
 
 FROM debian:buster-slim as base
 WORKDIR /app
