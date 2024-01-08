@@ -2,6 +2,7 @@ FROM rust:1.73.0-buster as build
 
 WORKDIR /usr/src/myapp
 COPY . .
+RUN apt update -y && apt install mold -y
 RUN cargo build --release
 
 FROM debian:buster-slim as base
