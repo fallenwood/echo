@@ -2,7 +2,7 @@ FROM rust:1.75.0-bookworm as build
 
 WORKDIR /usr/src/myapp
 COPY . .
-RUN apt update -y && apt install mold  -y
+RUN apt update -y && apt install mold clang -y
 RUN cargo build --release
 # RUN upx /usr/src/myapp/target/release/echo
 
