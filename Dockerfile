@@ -1,10 +1,10 @@
-FROM rust:1.73.0-buster as build
+FROM rust:1.75.0-bookworm as build
 
 WORKDIR /usr/src/myapp
 COPY . .
 RUN cargo build --release
 
-FROM debian:buster-slim as base
+FROM debian:bookworm-slim as base
 WORKDIR /app
 EXPOSE 3000
 ENV RUST_LOG=info
