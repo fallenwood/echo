@@ -2,11 +2,7 @@ mod echo_request;
 mod middleware;
 
 use axum::{
-  extract::{ConnectInfo, Query},
-  http::{HeaderMap, HeaderValue, StatusCode},
-  response::IntoResponse,
-  routing::get,
-  Router,
+  body::Body, extract::{ConnectInfo, Query}, http::{HeaderMap, HeaderValue, StatusCode}, response::IntoResponse, routing::{get, post, put}, Router
 };
 use echo_request::EchoRequest;
 use middleware::{populate_request_id, populate_response_time};
@@ -37,6 +33,7 @@ struct EchoOpenApi;
 const X_CLIENT_IP: &'static str = "X-Client-iP";
 const X_FORWARD_IP: &'static str = "x-forwarded-for";
 const X_REAL_IP: &'static str = "x-real-ip";
+const CONTENT_TYPE: &'static str = "content-type";
 
 fn create_app() -> Router {
   let swagger = SwaggerUi::new("/swagger")
@@ -44,6 +41,8 @@ fn create_app() -> Router {
 
   let app = Router::new()
     .route("/", get(get_echo))
+    .route("/", post(post_put_echo))
+    .route("/", put(post_put_echo))
     .layer(axum::middleware::from_fn(populate_request_id))
     .layer(
       ServiceBuilder::new()
@@ -133,6 +132,57 @@ async fn get_echo(
     "",
   )
 }
+
+#[utoipa::path(
+  post,
+  path = "/",
+  params(
+    ("status" = Option<i32>, Query, description = "Http Status Code"),
+    ("delay" = Option<i64>, Query, description = "The delay time in milliseconds"),
+    ("timeout" = Option<i64>, Query, description = "The delay time in milliseconds, higher priority than delay"),
+    ("content-type" = Option<String>, Header, description = "The response content type"),
+    // ("body" = Option<String>, Body, description = "The request body"),
+  ),
+)]
+async fn post_put_echo(
+  headers: HeaderMap,
+  Query(query): Query<EchoRequest>,
+  ConnectInfo(addr): ConnectInfo<SocketAddr>,
+  body: Body,
+) -> impl IntoResponse {
+  let status = query.status.unwrap_or(200) as u16;
+  let timeout = query.timeout.or(query.delay).unwrap_or_default();
+  let real_timeout = if timeout < 0 {
+    0
+  } else {
+    min(timeout, 120_000) as u64
+  };
+
+  let real_ip = match headers.get(X_REAL_IP) {
+    Some(ip) => ip.to_owned(),
+    None => match headers.get(X_FORWARD_IP) {
+      Some(ip) => ip.to_owned(),
+      None => HeaderValue::from_str(addr.ip().to_string().as_str()).unwrap(),
+    },
+  };
+
+  let content_type = match headers.get(CONTENT_TYPE) {
+    Some(s) => s.to_owned(),
+    None => HeaderValue::from_static("text/plain"),
+  };
+
+  sleep(Duration::from_millis(real_timeout)).await;
+
+  (
+    StatusCode::from_u16(status).unwrap(),
+    [
+      (X_CLIENT_IP, real_ip),
+      (CONTENT_TYPE, content_type),
+    ],
+    body,
+  )
+}
+
 
 #[cfg(test)]
 mod tests {

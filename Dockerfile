@@ -1,7 +1,7 @@
-FROM rust:1.75.0-bookworm as build
-
+FROM rust:1.77.2-bookworm as build
 WORKDIR /usr/src/myapp
 COPY . .
+RUN apt update -y && apt install mold -y
 RUN cargo build --release
 
 FROM debian:bookworm-slim as base
