@@ -1,2 +1,5 @@
-[build]
+[target.'cfg(any(target_os ="windows", target_os ="mac"))']
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[target.'cfg(any(target_arch="linux"))']
 rustflags = ["-C", "link-arg=-fuse-ld=mold"]
