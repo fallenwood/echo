@@ -6,11 +6,16 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-axum = "0.7.1"
+axum = "0.7.5"
 env_logger = "0.10.0"
-mimalloc = { version = "0.1.37", default-features = false }
+mimalloc = { version = "0.1.42", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.68"
+opentelemetry = "0.22.0"
+opentelemetry_sdk = "0.22.1"
+opentelemetry-stdout = { version = "0.3.0", features = ["trace"] }
+opentelemetry-otlp = { version = "0.14.0", features = ["default"] }
+tracing_opentelemetry = "0.24.0"
 tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1"
 chrono = "0.4.24"

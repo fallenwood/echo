@@ -17,6 +17,10 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 use tracing::Level;
 use mimalloc::MiMalloc;
+use opentelemetry::{global, trace::Tracer};
+use opentelemetry_sdk::propagation::TraceContextPropagator;
+use opentelemetry_sdk::trace::TracerProvider;
+use opentelemetry_stdout::SpanExporter;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -74,11 +78,33 @@ fn create_app() -> Router {
   app
 }
 
+/*fn init_tracer_otel() {
+  match SpanExporter::new_tonic(ExportConfig::default(), TonicConfig::default()) {
+    Ok(exporter) => {
+      global::set_text_map_propagator(TraceContextPropagator::new());
+      let provider = TraceProvider::builder()
+        .with_simple_exporter(exporter)
+        .build();
+      global::set_tracer_provider(provider);
+    },
+    Err(why) => panic!(":?", why)
+  }
+}*/
+
+fn init_tracer() {
+    global::set_text_map_propagator(TraceContextPropagator::new());
+    let provider = TracerProvider::builder()
+        .with_simple_exporter(SpanExporter::default())
+        .build();
+    global::set_tracer_provider(provider);
+}
+
 #[tokio::main]
 async fn main() {
+  init_tracer();
   env_logger::init();
 
-  let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+  let addr = SocketAddr::from(([0, 0, 0, 0], 30001));
   let app = create_app();
 
   tracing::info!("listening on {}", addr);
@@ -108,6 +134,7 @@ async fn get_echo(
   Query(query): Query<EchoRequest>,
   ConnectInfo(addr): ConnectInfo<SocketAddr>,
 ) -> impl IntoResponse {
+  println!("Handling");
   let status = query.status.unwrap_or(200) as u16;
   let timeout = query.timeout.or(query.delay).unwrap_or_default();
   let real_timeout = if timeout < 0 {
