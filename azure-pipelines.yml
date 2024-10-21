@@ -6,6 +6,7 @@ pool:
 
 variables:
   tag: "$(Build.BuildNumber)"
+  tagArm: "$(Build.BuildNumber)-arm64"
 
 steps:
 - task: Docker@2
@@ -16,3 +17,12 @@ steps:
     Dockerfile: '**/Dockerfile'
     tags: |
       $(tag)
+
+- task: Docker@2
+  inputs:
+    containerRegistry: 'fallenwood-docker'
+    repository: 'fallenwood-echo'
+    command: 'buildAndPush'
+    Dockerfile: '**/Dockerfile.arm64'
+    tags: |
+      $(tagArm)

@@ -1,10 +1,10 @@
-FROM rust:1.77.2-bookworm as build
+FROM docker.io/rust:1.82-bookworm as build
 WORKDIR /usr/src/myapp
 COPY . .
 RUN apt update -y && apt install mold -y
 RUN cargo build --release
 
-FROM debian:bookworm-slim as base
+FROM docker.io/debian:bookworm-slim as base
 WORKDIR /app
 EXPOSE 3000
 ENV RUST_LOG=info
