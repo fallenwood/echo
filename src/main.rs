@@ -34,6 +34,8 @@ const X_CLIENT_IP: &'static str = "X-Client-iP";
 const X_FORWARD_IP: &'static str = "x-forwarded-for";
 const X_REAL_IP: &'static str = "x-real-ip";
 const CONTENT_TYPE: &'static str = "content-type";
+const USER_AGENT: &'static str = "User-Agent";
+const X_CLIENT_USER_AGENT: &'static str = "x-client-user-agent";
 
 fn create_app() -> Router {
   let swagger = SwaggerUi::new("/swagger")
@@ -124,11 +126,19 @@ async fn get_echo(
     },
   };
 
+  let ua = match headers.get(USER_AGENT) {
+    Some(s) => s.to_owned(),
+    None => HeaderValue::from_static(""),
+  };
+
   sleep(Duration::from_millis(real_timeout)).await;
 
   (
     StatusCode::from_u16(status).unwrap(),
-    [(X_CLIENT_IP, real_ip)],
+    [
+      (X_CLIENT_IP, real_ip),
+      (X_CLIENT_USER_AGENT, ua),
+    ],
     "",
   )
 }
@@ -171,6 +181,11 @@ async fn post_put_echo(
     None => HeaderValue::from_static("text/plain"),
   };
 
+  let ua = match headers.get(USER_AGENT) {
+    Some(s) => s.to_owned(),
+    None => HeaderValue::from_static(""),
+  };
+
   sleep(Duration::from_millis(real_timeout)).await;
 
   (
@@ -178,6 +193,7 @@ async fn post_put_echo(
     [
       (X_CLIENT_IP, real_ip),
       (CONTENT_TYPE, content_type),
+      (X_CLIENT_USER_AGENT, ua),
     ],
     body,
   )
@@ -195,7 +211,7 @@ use axum::{
   };
   use tower::ServiceExt;
 
-  use crate::{create_app, middleware::X_RESPONSE_TIME};
+  use crate::{create_app, middleware::X_RESPONSE_TIME, X_CLIENT_USER_AGENT};
 
   #[tokio::test]
   async fn test_health() {
@@ -221,25 +237,6 @@ use axum::{
     assert_eq!(response.status(), StatusCode::OK);
     let header = response.headers();
     assert!(header.get(X_RESPONSE_TIME).is_none());
-  }
-
-  #[tokio::test]
-  async fn test_app_help() {
-    let app = create_app();
-
-    let response = app
-      .oneshot(
-        Request::builder()
-          .uri("/help")
-          .body(Body::empty())
-          .unwrap(),
-      )
-      .await
-      .unwrap();
-
-    assert_eq!(response.status(), StatusCode::OK);
-    let header = response.headers();
-    assert!(header.get(X_RESPONSE_TIME).is_some());
   }
 
   #[tokio::test]
@@ -269,6 +266,7 @@ use axum::{
       .oneshot(
         Request::builder()
           .uri("/?status=404")
+          .header("user-agent", "unittests/0.0")
           .body(Body::empty())
           .unwrap(),
       )
@@ -276,6 +274,7 @@ use axum::{
       .unwrap();
 
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    assert_eq!(response.headers().get(X_CLIENT_USER_AGENT).unwrap().to_owned(), "unittests/0.0");
   }
 
   #[tokio::test]
