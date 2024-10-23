@@ -14,15 +14,6 @@ steps:
     containerRegistry: 'fallenwood-docker'
     repository: 'fallenwood-echo'
     command: 'buildAndPush'
-    Dockerfile: '**/Dockerfile'
-    tags: |
-      $(tag)
-
-- task: Docker@2
-  inputs:
-    containerRegistry: 'fallenwood-docker'
-    repository: 'fallenwood-echo'
-    command: 'buildAndPush'
     Dockerfile: '**/Dockerfile.arm64'
     tags: |
       $(tagArm)
