@@ -7,14 +7,14 @@ RUN curl https://ziglang.org/download/0.13.0/zig-linux-x86_64-0.13.0.tar.xz -O &
   mv zig-linux-x86_64-0.13.0 /usr/local && \
   ln -s /usr/local/zig-linux-x86_64-0.13.0/zig /usr/local/bin/zig
 
-RUN rustup target add aarch64-unknown-linux-gnu
+RUN rustup target add aarch64-unknown-linux-musl
 RUN cargo install --locked cargo-zigbuild
-RUN cargo zigbuild --release --target aarch64-unknown-linux-gnu
+RUN cargo zigbuild --release --target aarch64-unknown-linux-musl
 
-FROM docker.io/arm64v8/debian:bookworm-slim as base
+FROM mcr.microsoft.com/azurelinux/distroless/base:3.0.20241005-arm64 as base
 WORKDIR /app
 EXPOSE 3000
 ENV RUST_LOG=info
-COPY --from=build /usr/src/myapp/target/aarch64-unknown-linux-gnu/release/echo /app
+COPY --from=build /usr/src/myapp/target/aarch64-unknown-linux-musl/release/echo /app
 
 CMD ["./echo"]
