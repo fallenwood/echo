@@ -2,7 +2,7 @@ mod echo_request;
 mod middleware;
 
 use axum::{
-  body::Body, extract::{ConnectInfo, Query}, http::{HeaderMap, HeaderValue, StatusCode}, response::IntoResponse, routing::{get, post, put}, Router
+  body::Body, extract::{ConnectInfo, Query, OriginalUri}, http::{HeaderMap, HeaderValue, StatusCode}, response::IntoResponse, routing::{get, post, put}, Router
 };
 use echo_request::EchoRequest;
 use middleware::{populate_request_id, populate_response_time};
@@ -36,6 +36,7 @@ const X_REAL_IP: &'static str = "x-real-ip";
 const CONTENT_TYPE: &'static str = "content-type";
 const USER_AGENT: &'static str = "User-Agent";
 const X_CLIENT_USER_AGENT: &'static str = "x-client-user-agent";
+const X_PATH_QUERY: &'static str = "x-path-query";
 
 fn create_app() -> Router {
   let swagger = SwaggerUi::new("/swagger")
@@ -109,6 +110,7 @@ async fn get_echo(
   headers: HeaderMap,
   Query(query): Query<EchoRequest>,
   ConnectInfo(addr): ConnectInfo<SocketAddr>,
+  OriginalUri(original_uri): OriginalUri,
 ) -> impl IntoResponse {
   let status = query.status.unwrap_or(200) as u16;
   let timeout = query.timeout.or(query.delay).unwrap_or_default();
@@ -131,6 +133,13 @@ async fn get_echo(
     None => HeaderValue::from_static(""),
   };
 
+  let path_and_query = HeaderValue::from_str(
+    original_uri
+      .path_and_query()
+      .map(|e| e.as_str())
+      .unwrap_or_default())
+    .unwrap();
+
   sleep(Duration::from_millis(real_timeout)).await;
 
   (
@@ -138,6 +147,7 @@ async fn get_echo(
     [
       (X_CLIENT_IP, real_ip),
       (X_CLIENT_USER_AGENT, ua),
+      (X_PATH_QUERY, path_and_query),
     ],
     "",
   )
@@ -158,6 +168,7 @@ async fn post_put_echo(
   headers: HeaderMap,
   Query(query): Query<EchoRequest>,
   ConnectInfo(addr): ConnectInfo<SocketAddr>,
+  OriginalUri(original_uri): OriginalUri,
   body: Body,
 ) -> impl IntoResponse {
   let status = query.status.unwrap_or(200) as u16;
@@ -186,7 +197,14 @@ async fn post_put_echo(
     None => HeaderValue::from_static(""),
   };
 
-  sleep(Duration::from_millis(real_timeout)).await;
+  let path_and_query = HeaderValue::from_str(
+    original_uri
+      .path_and_query()
+      .map(|e| e.as_str())
+      .unwrap_or_default())
+    .unwrap();
+
+    sleep(Duration::from_millis(real_timeout)).await;
 
   (
     StatusCode::from_u16(status).unwrap(),
@@ -194,6 +212,7 @@ async fn post_put_echo(
       (X_CLIENT_IP, real_ip),
       (CONTENT_TYPE, content_type),
       (X_CLIENT_USER_AGENT, ua),
+      (X_PATH_QUERY, path_and_query),
     ],
     body,
   )
