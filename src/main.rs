@@ -71,8 +71,8 @@ fn create_app() -> Router {
         ),
     )
     .layer(axum::middleware::from_fn(populate_response_time))
-    .route("/healthz", get(health))
-    .merge(swagger);
+    .route("/healthz", get(health));
+    // .merge(swagger);
 
   app
 }
