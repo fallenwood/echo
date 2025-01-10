@@ -1,4 +1,4 @@
-FROM docker.io/rust:1.83-bookworm as build
+FROM docker.io/rust:1.84-bookworm as build
 WORKDIR /usr/src/myapp
 COPY . .
 RUN apt update -y && apt install mold -y

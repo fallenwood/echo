@@ -1,4 +1,4 @@
-FROM docker.io/rust:1.83-bookworm as build
+FROM docker.io/rust:1.84-bookworm as build
 WORKDIR /usr/src/myapp
 COPY . .
 RUN apt update -y && apt install mold curl xz-utils -y
@@ -11,7 +11,7 @@ RUN rustup target add aarch64-unknown-linux-musl
 RUN cargo install --locked cargo-zigbuild
 RUN cargo zigbuild --release --target aarch64-unknown-linux-musl
 
-FROM mcr.microsoft.com/azurelinux/distroless/base:3.0.20241005-arm64 as base
+FROM mcr.microsoft.com/azurelinux/distroless/base:3.0.20250102-arm64 as base
 WORKDIR /app
 EXPOSE 3000
 ENV RUST_LOG=info
