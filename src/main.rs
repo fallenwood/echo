@@ -2,32 +2,32 @@ mod echo_request;
 mod middleware;
 
 use axum::{
-  body::Body, extract::{ConnectInfo, Query, OriginalUri}, http::{HeaderMap, HeaderValue, StatusCode}, response::IntoResponse, routing::{get, post, put}, Router
+  Router,
+  body::Body,
+  extract::{ConnectInfo, OriginalUri, Query},
+  http::{HeaderMap, HeaderValue, StatusCode},
+  response::IntoResponse,
+  routing::{get, post, put},
 };
 use echo_request::EchoRequest;
 use middleware::{populate_request_id, populate_response_time};
+use mimalloc::MiMalloc;
 use std::{cmp::min, net::SocketAddr};
-use tokio::time::{sleep, Duration};
-use tower::{buffer::BufferLayer, limit::ConcurrencyLimitLayer, ServiceBuilder};
+use tokio::time::{Duration, sleep};
+use tower::{ServiceBuilder, buffer::BufferLayer, limit::ConcurrencyLimitLayer};
 use tower_http::{
-  trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
   LatencyUnit,
+  trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
 };
+use tracing::Level;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
-use tracing::Level;
-use mimalloc::MiMalloc;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
 #[derive(OpenApi)]
-#[openapi(
-  paths(get_echo),
-  components(
-    schemas(EchoRequest),
-  ),
-)]
+#[openapi(paths(get_echo), components(schemas(EchoRequest),))]
 struct EchoOpenApi;
 
 const X_CLIENT_IP: &'static str = "X-Client-iP";
@@ -39,8 +39,7 @@ const X_CLIENT_USER_AGENT: &'static str = "x-client-user-agent";
 const X_PATH_QUERY: &'static str = "x-path-query";
 
 fn create_app() -> Router {
-  let swagger = SwaggerUi::new("/swagger")
-    .url("/api-doc/openapi.json", EchoOpenApi::openapi());
+  let swagger = SwaggerUi::new("/swagger").url("/api-doc/openapi.json", EchoOpenApi::openapi());
 
   let app = Router::new()
     .route("/", get(get_echo))
@@ -88,7 +87,10 @@ async fn main() {
 
   let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
 
-  axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
+  axum::serve(
+    listener,
+    app.into_make_service_with_connect_info::<SocketAddr>(),
+  )
   .await
   .unwrap();
 }
@@ -137,8 +139,9 @@ async fn get_echo(
     original_uri
       .path_and_query()
       .map(|e| e.as_str())
-      .unwrap_or_default())
-    .unwrap();
+      .unwrap_or_default(),
+  )
+  .unwrap();
 
   sleep(Duration::from_millis(real_timeout)).await;
 
@@ -201,10 +204,11 @@ async fn post_put_echo(
     original_uri
       .path_and_query()
       .map(|e| e.as_str())
-      .unwrap_or_default())
-    .unwrap();
+      .unwrap_or_default(),
+  )
+  .unwrap();
 
-    sleep(Duration::from_millis(real_timeout)).await;
+  sleep(Duration::from_millis(real_timeout)).await;
 
   (
     StatusCode::from_u16(status).unwrap(),
@@ -218,19 +222,19 @@ async fn post_put_echo(
   )
 }
 
-
 #[cfg(test)]
 mod tests {
   use std::net::SocketAddr;
 
-use axum::{
+  use axum::{
     body::Body,
+    extract::connect_info::MockConnectInfo,
     http::{Request, StatusCode},
-    response::IntoResponse, extract::connect_info::MockConnectInfo,
+    response::IntoResponse,
   };
   use tower::ServiceExt;
 
-  use crate::{create_app, middleware::X_RESPONSE_TIME, X_CLIENT_USER_AGENT};
+  use crate::{X_CLIENT_USER_AGENT, create_app, middleware::X_RESPONSE_TIME};
 
   #[tokio::test]
   async fn test_health() {
@@ -260,16 +264,10 @@ use axum::{
 
   #[tokio::test]
   async fn test_app_200() {
-    let app = create_app()
-      .layer(MockConnectInfo(SocketAddr::from(([192, 1, 1, 1], 12345))));
+    let app = create_app().layer(MockConnectInfo(SocketAddr::from(([192, 1, 1, 1], 12345))));
 
     let response = app
-      .oneshot(
-        Request::builder()
-          .uri("/")
-          .body(Body::empty())
-          .unwrap(),
-      )
+      .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
       .await
       .unwrap();
 
@@ -278,8 +276,7 @@ use axum::{
 
   #[tokio::test]
   async fn test_app_404() {
-    let app = create_app()
-      .layer(MockConnectInfo(SocketAddr::from(([192, 1, 1, 1], 12345))));
+    let app = create_app().layer(MockConnectInfo(SocketAddr::from(([192, 1, 1, 1], 12345))));
 
     let response = app
       .oneshot(
@@ -293,13 +290,19 @@ use axum::{
       .unwrap();
 
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
-    assert_eq!(response.headers().get(X_CLIENT_USER_AGENT).unwrap().to_owned(), "unittests/0.0");
+    assert_eq!(
+      response
+        .headers()
+        .get(X_CLIENT_USER_AGENT)
+        .unwrap()
+        .to_owned(),
+      "unittests/0.0"
+    );
   }
 
   #[tokio::test]
   async fn test_app_delay() {
-    let app = create_app()
-      .layer(MockConnectInfo(SocketAddr::from(([192, 1, 1, 1], 12345))));
+    let app = create_app().layer(MockConnectInfo(SocketAddr::from(([192, 1, 1, 1], 12345))));
 
     let response = app
       .oneshot(
@@ -313,7 +316,13 @@ use axum::{
 
     assert_eq!(response.status(), StatusCode::OK);
     let header = response.headers();
-    let latency = header.get(X_RESPONSE_TIME).unwrap().to_str().unwrap().parse::<i32>().unwrap();
+    let latency = header
+      .get(X_RESPONSE_TIME)
+      .unwrap()
+      .to_str()
+      .unwrap()
+      .parse::<i32>()
+      .unwrap();
 
     assert!(latency >= 100);
   }
