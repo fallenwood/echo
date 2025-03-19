@@ -1,11 +1,11 @@
-FROM docker.io/rust:1.83-bookworm as build
+FROM docker.io/rust:1.85-bookworm as build
 WORKDIR /usr/src/myapp
 COPY . .
 RUN apt update -y && apt install mold curl xz-utils -y
-RUN curl https://ziglang.org/download/0.13.0/zig-linux-x86_64-0.13.0.tar.xz -O && \
-  tar xf zig-linux-x86_64-0.13.0.tar.xz && \
-  mv zig-linux-x86_64-0.13.0 /usr/local && \
-  ln -s /usr/local/zig-linux-x86_64-0.13.0/zig /usr/local/bin/zig
+RUN curl https://ziglang.org/download/0.14.0/zig-linux-x86_64-0.14.0.tar.xz -O && \
+  tar xf zig-linux-x86_64-0.14.0.tar.xz && \
+  mv zig-linux-x86_64-0.14.0 /usr/local && \
+  ln -s /usr/local/zig-linux-x86_64-0.14.0/zig /usr/local/bin/zig
 
 RUN rustup target add aarch64-unknown-linux-musl
 RUN cargo install --locked cargo-zigbuild
