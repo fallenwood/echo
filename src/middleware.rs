@@ -5,6 +5,7 @@ use axum::{
   response::Response,
 };
 use chrono::Utc;
+use opentelemetry::{global, trace::{SpanKind, Tracer}};
 use uuid::Uuid;
 
 pub const X_RESPONSE_TIME: &'static str = "x-response-time";
@@ -37,5 +38,26 @@ pub async fn populate_response_time(req: Request<Body>, next: Next) -> Response 
   response
     .headers_mut()
     .insert(X_RESPONSE_TIME, response_time);
+  response
+}
+
+pub async fn trace_request(
+  req: Request<Body>,
+  next: Next,
+) -> Response {
+  let tracer = global::tracer("echo/server");
+  let span = tracer
+    .span_builder("Incoming request")
+    .with_kind(SpanKind::Server);
+    // .with_attributes([
+    //   KeyValue::new("rpc.system", "grpc"),
+    //   KeyValue::new("server.port", 50052),
+    //   KeyValue::new("rpc.method", "say_hello"),
+    // ]);
+
+  span.start(&tracer);
+
+  let response = next.run(req).await;
+
   response
 }

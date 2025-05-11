@@ -1,7 +1,6 @@
-FROM docker.io/rust:1.85-bookworm as build
+FROM docker.io/rust:1.86-bookworm as build
 WORKDIR /usr/src/myapp
 COPY . .
-RUN apt update -y && apt install mold -y
 RUN cargo build --release
 
 FROM docker.io/debian:bookworm-slim as base

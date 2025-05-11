@@ -1,5 +1,6 @@
 mod echo_request;
 mod middleware;
+mod otel;
 
 use axum::{
   Router,
@@ -10,7 +11,7 @@ use axum::{
   routing::{get, post, put},
 };
 use echo_request::EchoRequest;
-use middleware::{populate_request_id, populate_response_time};
+use middleware::{populate_request_id, populate_response_time, trace_request};
 use mimalloc::MiMalloc;
 use std::{cmp::min, net::SocketAddr};
 use tokio::time::{Duration, sleep};
@@ -70,6 +71,7 @@ fn create_app() -> Router {
         ),
     )
     .layer(axum::middleware::from_fn(populate_response_time))
+    .layer(axum::middleware::from_fn(trace_request))
     .route("/healthz", get(health))
     .merge(swagger);
 
@@ -78,7 +80,13 @@ fn create_app() -> Router {
 
 #[tokio::main]
 async fn main() {
-  env_logger::init();
+  // env_logger::init();
+
+  let endpoint =
+    std::env::var("ECHO_OTEL_TRACING_ENDPOINT").unwrap_or("http://192.168.1.128:18889/".into());
+  let service_name: String = "echo".into();
+  let tracer = otel::init_tracer(service_name.clone(), endpoint.clone());
+  let logger = otel::init_logs(service_name.clone(), endpoint.clone());
 
   let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
   let app = create_app();
@@ -93,6 +101,9 @@ async fn main() {
   )
   .await
   .unwrap();
+
+  tracer.shutdown().unwrap();
+  logger.shutdown().unwrap();
 }
 
 pub async fn health() -> StatusCode {
