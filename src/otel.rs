@@ -1,6 +1,9 @@
+use std::time::Duration;
+
 use opentelemetry::global;
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
-use opentelemetry_otlp::{SpanExporter, WithExportConfig, LogExporter};
+use opentelemetry_http::hyper::HyperClient;
+use opentelemetry_otlp::{LogExporter, SpanExporter, WithExportConfig, WithHttpConfig};
 use opentelemetry_sdk::{
   logs::SdkLoggerProvider,
   propagation::TraceContextPropagator,
@@ -11,14 +14,16 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 pub fn init_tracer(service_name: String, endpoint: String) -> SdkTracerProvider {
   global::set_text_map_propagator(TraceContextPropagator::new());
 
-  let exporter = SpanExporter::builder()
-    .with_tonic()
-    .with_endpoint(endpoint)
-    .build()
-    .unwrap();
+  // let exporter = SpanExporter::builder()
+  //   // .with_tonic()
+  //   .with_http()
+  //   .with_http_client(HyperClient::with_default_connector(Duration::from_secs(10), None))
+  //   .with_endpoint(endpoint)
+  //   .build()
+  //   .unwrap();
 
   let provider = TracerProviderBuilder::default()
-    .with_simple_exporter(exporter)
+    // .with_simple_exporter(exporter)
     .with_simple_exporter(opentelemetry_stdout::SpanExporter::default())
     .with_resource(
       Resource::builder()
@@ -32,14 +37,14 @@ pub fn init_tracer(service_name: String, endpoint: String) -> SdkTracerProvider 
 }
 
 pub fn init_logs(service_name: String, endpoint: String) -> SdkLoggerProvider {
-  let exporter = LogExporter::builder()
-    .with_tonic()
-    .with_endpoint(endpoint)
-    .build()
-    .unwrap();
+  // let exporter = LogExporter::builder()
+  //   .with_tonic()
+  //   .with_endpoint(endpoint)
+  //   .build()
+  //   .unwrap();
 
   let logger_provider = SdkLoggerProvider::builder()
-    .with_simple_exporter(exporter)
+    // .with_simple_exporter(exporter)
     .with_simple_exporter(opentelemetry_stdout::LogExporter::default())
     .with_resource(
       Resource::builder()

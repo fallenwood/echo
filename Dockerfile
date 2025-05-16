@@ -1,4 +1,4 @@
-FROM docker.io/rust:1.86-bookworm as build
+FROM docker.io/rust:1.87-bookworm as build
 WORKDIR /usr/src/myapp
 COPY . .
 RUN cargo build --release

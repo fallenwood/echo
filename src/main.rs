@@ -83,7 +83,7 @@ async fn main() {
   // env_logger::init();
 
   let endpoint =
-    std::env::var("ECHO_OTEL_TRACING_ENDPOINT").unwrap_or("http://192.168.1.128:18889/".into());
+    std::env::var("ECHO_OTEL_TRACING_ENDPOINT").unwrap_or("http://127.0.0.1:4317/v1/traces".into());
   let service_name: String = "echo".into();
   let tracer = otel::init_tracer(service_name.clone(), endpoint.clone());
   let logger = otel::init_logs(service_name.clone(), endpoint.clone());
