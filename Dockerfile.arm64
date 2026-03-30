@@ -1,7 +1,7 @@
 FROM docker.io/rust:1.94-bookworm as build
 WORKDIR /usr/src/myapp
 COPY . .
-RUN apt update -y && apt install mold curl xz-utils -y
+RUN apt update -y && apt install curl xz-utils -y
 RUN curl https://ziglang.org/download/0.15.2/zig-x86_64-linux-0.15.2.tar.xz -O && \
   tar xf zig-x86_64-linux-0.15.2.tar.xz && \
   mv zig-x86_64-linux-0.15.2 /usr/local && \
