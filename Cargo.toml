@@ -6,21 +6,21 @@ edition = "2024"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-axum = { version = "0.7.9" }
-env_logger = "0.11.6"
-mimalloc = { version = "0.1.43", default-features = false }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0.68"
-tokio = { version = "1.38", features = ["full"] }
+axum = { version = "0.8.8" }
+env_logger = "0.11.10"
+mimalloc = { version = "0.1.48", default-features = false }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+tokio = { version = "1.50.0", features = ["full"] }
 tracing = "0.1"
-chrono = "0.4.39"
-tower = { version = "0.5", features = ["full"] }
-tower-http = { version = "0.6.2", features = ["trace"] }
-utoipa = { version = "5.3.0", features = ["axum_extras"] }
-utoipa-swagger-ui = { version = "8.1.0", features = ["axum"] }
+chrono = "0.4.44"
+tower = { version = "0.5.3", features = ["full"] }
+tower-http = { version = "0.6.8", features = ["trace"] }
+utoipa = { version = "5.4.0", features = ["axum_extras"] }
+utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
 
 [dependencies.uuid]
-version = "1.11.0"
+version = "1.23.0"
 features = [
     "v4",                # Lets you generate random UUIDs
     "fast-rng",          # Use a faster (but still sufficiently random) RNG
